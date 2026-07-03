@@ -84,7 +84,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     ...(reindexChainstate ? ['-reindex-chainstate'] : []),
   ]
 
-  const nodeSub = await sdk.SubContainer.of(
+  const nodeSub = sdk.SubContainer.of(
     effects,
     { imageId: 'bitcoin-cash-node' },
     mainMounts,

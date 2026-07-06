@@ -1,5 +1,6 @@
+import { socksHostId, socksPort } from 'tor-startos/startos/utils'
 import { sdk } from './sdk'
-import { rootDir, networkPorts, networkFlag, Network, GetBlockchainInfo, GetPeerInfo } from './utils'
+import { bridgeAddress, rootDir, networkPorts, networkFlag, Network, GetBlockchainInfo, GetPeerInfo } from './utils'
 import { bitcoinConfFile } from './fileModels/bitcoin.conf'
 import { storeJson } from './fileModels/store.json'
 import { mainMounts } from './mounts'
@@ -32,17 +33,26 @@ export const main = sdk.setupMain(async ({ effects }) => {
     await storeJson.merge(effects, { reindexBlockchain: false, reindexChainstate: false })
   }
 
-  // Tor — get container IP (restarts if it changes)
-  const torIp = await sdk.getContainerIp(effects, { packageId: 'tor' }).const()
+  // Tor SOCKS over the bridge. The mapped value only changes when the address
+  // itself does — with the 9050 fallback it stays constant across tor
+  // install/update/uninstall, so this .const() never restarts BCHN unless tor
+  // lands on a different port (then one healing restart). A dead bridge
+  // address is just connection-refused, so -onion is always safe to pass.
+  const torSocks = await bridgeAddress(effects, {
+    packageId: 'tor',
+    hostId: socksHostId,
+    internalPort: socksPort,
+    fallbackPort: socksPort,
+  }).const()
 
-  // Track Tor running status dynamically
+  // Track Tor install/run state dynamically for the health check (no restart)
+  let torInstalled = false
   let torRunning = false
-  if (torIp) {
-    sdk.getStatus(effects, { packageId: 'tor' }).onChange((status) => {
-      torRunning = status?.desired.main === 'running'
-      return { cancel: false }
-    })
-  }
+  sdk.getStatus(effects, { packageId: 'tor' }).onChange((status) => {
+    torInstalled = status !== null
+    torRunning = status?.desired.main === 'running'
+    return { cancel: false }
+  })
 
   const onlynetList: string[] = ([
     (bitcoinConf?.onlynet as string[] | string | undefined) ?? [],
@@ -73,13 +83,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
     `-rpcbind=0.0.0.0`,
     '-rpcallowip=0.0.0.0/0',
     ...(netFlag ? [netFlag] : []),
-    ...(torIp
-      ? [
-          `-onion=${torIp}:9050`,
-          '-listenonion=0',
-          ...(torOnly ? [`-proxy=${torIp}:9050`, '-dnsseed=0', '-dns=0'] : []),
-        ]
-      : []),
+    `-onion=${torSocks}`,
+    '-listenonion=0',
+    ...(torOnly ? [`-proxy=${torSocks}`, '-dnsseed=0', '-dns=0'] : []),
     ...(reindexBlockchain ? ['-reindex'] : []),
     ...(reindexChainstate ? ['-reindex-chainstate'] : []),
   ]
@@ -225,7 +231,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ready: {
         display: 'Tor',
         fn: () => {
-          if (!torIp) return { result: 'disabled' as const, message: 'Tor is not installed' }
+          if (!torInstalled) return { result: 'disabled' as const, message: 'Tor is not installed' }
           if (!torRunning) return { result: 'disabled' as const, message: 'Tor is not running' }
           if (onlynetActive && !onlynetList.includes('onion')) return excludedByOnlynet()
           return {

@@ -71,6 +71,9 @@ export const shape = z
     blocknotify: iniString,
     wallet: iniStringArray,
   })
+  // Loose on purpose: bitcoin.conf carries keys this package does not model and
+  // a strict shape would strip them. The ini* coercions above are load-bearing
+  // too -- INI reads return strings, and a duplicated key returns an array.
   .loose()
 
 function stringifyPrimitives(a: unknown): unknown {

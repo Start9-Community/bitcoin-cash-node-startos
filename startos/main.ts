@@ -175,6 +175,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
       subcontainer: nodeSub,
       exec: {
         command: ['bitcoind', ...daemonArgs],
+        // BCHN flushes its databases on exit; a shorter timeout corrupts
+        // chainstate on a slow disk.
         sigtermTimeout: 300_000,
       },
       ready: {

@@ -6,14 +6,12 @@ Develop it inside a StartOS packaging workspace created by `start-cli s9pk init-
 which provides the packaging guide and agent context one level up. If you're reading this in a
 bare clone with no workspace, the full guide is at <https://docs.start9.com/packaging>.
 
-Work this package's `TODO.md` from top to bottom. Keep `README.md` (architecture, for developers and LLMs) and `instructions.md` (end-user docs) in sync with your changes.
+Work this package's `TODO.md` from top to bottom. Keep `README.md` (technical reference for an AI support or administering agent) and `instructions.md` (end-user docs) in sync with your changes.
 
 ## This repo
 
-- **Package id is `bitcoincashd`.** Bitcoin Cash Node (BCHN) — a full BCH node. Dependent services (Fulcrum BCH, BCH Explorer, mining pools) connect over the exported RPC interface, and subscribe to the ZMQ interfaces; interface ids (`rpcInterfaceId`, `peerInterfaceId`, `zmqInterfaceId`) live in `startos/utils.ts`.
-- **Networks remap ports.** RPC/P2P ports change per network (`networkPorts` in `utils.ts`); testnet4 is remapped off BCHN's defaults (28342/28343) to avoid colliding with the ZMQ ports (28332-28335). DSP ZMQ streams (28334/28335) are always on; block/tx ZMQ (28332/28333) is conditional on the ZeroMQ toggle.
-- **Tor is SOCKS-only.** Outbound peers route through tor's SOCKS proxy at the stable OS bridge address `10.0.3.1:9050`, resolved reactively via `sdk.host.getBridgeAddress` from tor's exported `socksHostId`/`socksPort` (`tor-startos/startos/utils`). `-onion` is set unconditionally — a dead bridge address is just connection-refused when Tor is absent, and the `9050` fallback keeps the value constant so BCHN never restarts on Tor install/update/uninstall. Inbound onion uses the Tor service's URL plugin on the Peer interface (`-listenonion` is force-disabled — tor-startos has no TCP control port).
-
-## Inspecting a running install
-
-To run a command inside the service's container (read its generated config, grep app logs), use `start-cli package attach bitcoincashd -n node-sub -- <cmd>`. Select the subcontainer by **name** with `-n` (the name passed to `SubContainer.of` in `main.ts` — here `node-sub`) or by image with `-i`. Note: `-s/--subcontainer` matches the internal **Guid**, not the name, so passing a name to `-s` fails with "no matching subcontainers".
+- **The package id is `bitcoincashd`, not `bchn` or `bitcoin-cash-node`.** Dependent packages (Fulcrum BCH, BCH Explorer, the mining pools) reference it by that id, and the interface id constants they import live in `startos/utils.ts`.
+- **testnet4's ports are remapped to 28342/28343 on purpose.** BCHN's defaults for it are 28332/28333, which are this package's ZMQ block and transaction ports. Don't "restore" the upstream defaults.
+- **`-listenonion=0` is forced.** BCHN would otherwise try a Tor control port on `127.0.0.1:9051`, which `tor-startos` does not offer — its control interface is a Unix socket. Inbound onion comes from attaching the Tor service's URL plugin to the Peer interface.
+- **Tor's SOCKS proxy is reached over the service bridge with a `9050` fallback.** The fallback holds the address constant while Tor is absent, so the `.const()` doesn't restart the node on Tor install/uninstall, and a dead address is just connection-refused — which is why `-onion` is safe to pass unconditionally.
+- **Onion-only mode adds `-proxy`, `-dnsseed=0` and `-dns=0`, and all three belong together.** Without them a clearnet DNS-seed or addrman fallback leaks the node's address while the user believes they are Tor-only.

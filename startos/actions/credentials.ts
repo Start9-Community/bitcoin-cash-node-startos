@@ -69,7 +69,8 @@ export const viewCredentials = sdk.Action.withInput(
       }
     }
 
-    // rpcauth user — password not recoverable (HMAC only)
+    // rpcauth user — the salted HMAC is all that is stored, so the password is not
+    // recoverable and is shown once. Never add a path that keeps the plaintext.
     return {
       version: '1' as const,
       title: `RPC Credential: ${input.name}`,

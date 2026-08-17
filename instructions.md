@@ -14,15 +14,12 @@ page covers what is specific to running it on StartOS.
 - A **JSON-RPC interface** on port 8332 that other StartOS services (Fulcrum BCH, BCH
   Explorer, mining pools) and external wallets connect to.
 - **ZeroMQ** block and transaction notifications on ports 28332/28333 for services
-  that subscribe to them (enable in Config). Double Spend Proof (DSP) ZMQ streams
-  on ports 28334/28335 are always active.
+  that subscribe to them, on by default and switchable under **Node Settings**.
+  Double Spend Proof (DSP) ZMQ streams on ports 28334/28335 are always active.
 - **Tor** support — when Tor is installed, BCHN routes outbound peer connections through
-  Tor. A hybrid mode (clearnet + onion) runs by default; restrict to onion-only via
-  Config if you want a fully private node.
+  Tor. A hybrid mode (clearnet + onion) runs by default; restrict to onion-only under
+  **RPC & Peers Settings** if you want a fully private node.
 - Multiple networks: **mainnet**, **testnet3**, **testnet4**, **scalenet**, **chipnet**, and **regtest**.
-- The **May 2026 network upgrade** is included: P2S32 (32-byte script hash),
-  native loops, functions, and bitwise opcodes — required for continued operation
-  after May 15, 2026.
 
 ## Getting started
 
@@ -47,7 +44,7 @@ auto-generated username, password, and port for your selected network.
 
 ## Configuration
 
-All settings live under **Config**, organized into four actions:
+Settings are actions on the service page, organized into four:
 
 - **Network** — mainnet (default), testnet3, testnet4, scalenet, chipnet, or regtest.
   Switching network changes the data directory and the RPC/P2P port set.
@@ -75,7 +72,7 @@ forwarding your `.onion:8333` to the node so peers can reach you.
 
 ## Actions
 
-Beyond the four Config actions above, the service exposes:
+Beyond the four configuration actions above, the service exposes:
 
 - **Node Info** — live version, network, connection count, and sync status (available while running).
 - **View RPC Credentials** — display the username, password, and RPC port for a credential.
@@ -89,36 +86,32 @@ Beyond the four Config actions above, the service exposes:
 
 ## Ports
 
-| Port  | Protocol | Purpose                                          |
-|-------|----------|--------------------------------------------------|
-| 8332  | HTTP     | JSON-RPC — mainnet                               |
-| 8333  | TCP      | Peer-to-peer — mainnet                           |
-| 18332 | HTTP     | JSON-RPC — testnet3                              |
-| 18333 | TCP      | Peer-to-peer — testnet3                          |
-| 28342 | HTTP     | JSON-RPC — testnet4                              |
-| 28343 | TCP      | Peer-to-peer — testnet4                          |
-| 38332 | HTTP     | JSON-RPC — scalenet                              |
-| 38333 | TCP      | Peer-to-peer — scalenet                          |
-| 48332 | HTTP     | JSON-RPC — chipnet                               |
-| 48333 | TCP      | Peer-to-peer — chipnet                           |
-| 18443 | HTTP     | JSON-RPC — regtest                               |
-| 18444 | TCP      | Peer-to-peer — regtest                           |
-| 28332 | TCP      | ZMQ block notifications (when enabled)           |
-| 28333 | TCP      | ZMQ transaction notifications (when enabled)     |
-| 28334 | TCP      | ZMQ DSP hash notifications (always on)           |
-| 28335 | TCP      | ZMQ DSP raw tx notifications (always on)         |
+| Port  | Protocol | Purpose                                      |
+| ----- | -------- | -------------------------------------------- |
+| 8332  | HTTP     | JSON-RPC — mainnet                           |
+| 8333  | TCP      | Peer-to-peer — mainnet                       |
+| 18332 | HTTP     | JSON-RPC — testnet3                          |
+| 18333 | TCP      | Peer-to-peer — testnet3                      |
+| 28342 | HTTP     | JSON-RPC — testnet4                          |
+| 28343 | TCP      | Peer-to-peer — testnet4                      |
+| 38332 | HTTP     | JSON-RPC — scalenet                          |
+| 38333 | TCP      | Peer-to-peer — scalenet                      |
+| 48332 | HTTP     | JSON-RPC — chipnet                           |
+| 48333 | TCP      | Peer-to-peer — chipnet                       |
+| 18443 | HTTP     | JSON-RPC — regtest                           |
+| 18444 | TCP      | Peer-to-peer — regtest                       |
+| 28332 | TCP      | ZMQ block notifications (when enabled)       |
+| 28333 | TCP      | ZMQ transaction notifications (when enabled) |
+| 28334 | TCP      | ZMQ DSP hash notifications (always on)       |
+| 28335 | TCP      | ZMQ DSP raw tx notifications (always on)     |
 
-## May 2026 network upgrade
+## Network upgrades
 
-BCHN v29.0.0 implements the **May 15, 2026 network upgrade**:
-
-- **P2S32** — Pay-to-Script-Hash with 32-byte hashes.
-- **Native Loops** — looping opcodes in scripts.
-- **Functions** — script-defined callable functions.
-- **Bitwise Operations** — new bitwise opcodes.
-
-Nodes running v28.x stopped following the main chain after the upgrade activated.
-**Upgrade to v29.0.0 immediately if you are on an older version.**
+Bitcoin Cash activates consensus changes on a schedule, and a node that has not
+been updated stops following the main chain once one activates. Keep this service
+updated — StartOS will offer the new version as it is packaged, and applying it
+before an activation date is the whole of what you need to do. What each upgrade
+changes is in the upstream release notes, linked above.
 
 ## Limitations
 

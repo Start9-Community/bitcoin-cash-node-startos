@@ -1,3 +1,5 @@
+import { sdk } from './sdk'
+
 export const rootDir = '/data'
 
 // ── Interface IDs ─────────────────────────────────────────────────────────────
@@ -95,3 +97,10 @@ export type GetMempoolInfo = {
   maxmempool: number
   mempoolminfee: number
 }
+
+export const mainMounts = sdk.Mounts.of().mountVolume({
+  volumeId: 'main',
+  subpath: null,
+  mountpoint: rootDir,
+  readonly: false,
+})

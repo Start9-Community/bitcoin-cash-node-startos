@@ -5,8 +5,8 @@ import {
   Network,
   GetBlockchainInfo,
   GetNetworkInfo,
+  mainMounts,
 } from '../utils'
-import { mainMounts } from '../mounts'
 
 export const runtimeInfo = sdk.Action.withoutInput(
   'runtime-info',

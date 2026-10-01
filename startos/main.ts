@@ -7,10 +7,10 @@ import {
   Network,
   GetBlockchainInfo,
   GetPeerInfo,
+  mainMounts,
 } from './utils'
 import { bitcoinConfFile } from './fileModels/bitcoin.conf'
 import { storeJson } from './fileModels/store.json'
-import { mainMounts } from './mounts'
 
 export { mainMounts }
 

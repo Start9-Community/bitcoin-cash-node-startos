@@ -8,7 +8,7 @@ const inputSpec = InputSpec.of({
   networks: Value.multiselect({
     name: 'Networks To Delete',
     description:
-      'Delete all BCHN blockchain data for the selected test networks. Mainnet is intentionally excluded and cannot be selected.',
+      'Removes every block, chainstate and index of each selected network. Mainnet is never offered, and the network the node is set to is refused.\n- Testnet3: the legacy public test network\n- Testnet4: the lighter public test network\n- Scalenet: the high-throughput test network\n- Chipnet: the upgrade (CHIP) staging network\n- Regtest: the local test chain',
     warning:
       'This permanently deletes all blockchain data for the selected networks. You cannot undo this. Mainnet data is never affected.',
     default: [],
@@ -45,14 +45,7 @@ export const deleteTestNetworkData = sdk.Action.withInput(
     visibility: 'enabled' as const,
   }),
   inputSpec,
-  async ({ effects: _effects }) => {
-    const store = await storeJson.read().once()
-    const active: Network = store?.network ?? 'mainnet'
-    const defaults = (
-      ['testnet3', 'testnet4', 'scalenet', 'chipnet', 'regtest'] as const
-    ).filter((n) => n !== active)
-    return { networks: defaults }
-  },
+  async ({ effects: _effects }) => ({ networks: [] }),
   async ({ effects, input }) => {
     const networks = (input.networks ?? []).filter(Boolean) as string[]
     if (networks.length === 0) {
@@ -85,7 +78,7 @@ export const deleteTestNetworkData = sdk.Action.withInput(
           const subdir = testNetSubdirs[net]
           if (!subdir) continue
           const dataPath = `${rootDir}/${subdir}`
-          const res = await sub.exec(['rm', '-rf', dataPath], undefined, null)
+          const res = await sub.exec(['rm', '-rf', dataPath], { timeout: null })
           if (res.exitCode === 0) removed.push(dataPath)
         }
       },

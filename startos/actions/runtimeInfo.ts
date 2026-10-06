@@ -1,3 +1,4 @@
+import { T } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
 import { storeJson } from '../fileModels/store.json'
 import {
@@ -52,37 +53,73 @@ export const runtimeInfo = sdk.Action.withoutInput(
             ? JSON.parse(chainRes.stdout.toString())
             : null
 
-        const lines: string[] = []
+        const value: T.ActionResultMember[] = []
         if (net) {
-          lines.push(`Version: ${net.subversion}`)
-          lines.push(`Network Active: ${net.networkactive ? 'Yes' : 'No'}`)
-          lines.push(
-            `Connections: ${net.connections} (in: ${net.connections_in}, out: ${net.connections_out})`,
+          value.push(
+            single(
+              'Version',
+              net.subversion,
+              'The BCHN release this node runs',
+            ),
+            single(
+              'Network Active',
+              net.networkactive ? 'Yes' : 'No',
+              'Whether peer-to-peer networking is turned on',
+            ),
+            single(
+              'Connections',
+              `${net.connections} (${net.connections_in} in / ${net.connections_out} out)`,
+              'The number of peers connected (inbound and outbound)',
+            ),
           )
         }
         if (chain) {
-          lines.push(
-            `Chain: ${chain.pruned ? 'pruned' : 'archival'} ${network}`,
-          )
-          lines.push(`Blocks: ${chain.blocks} / ${chain.headers}`)
-          lines.push(
-            `Sync: ${chain.initialblockdownload ? `${(chain.verificationprogress * 100).toFixed(2)}%` : 'Complete'}`,
+          value.push(
+            single(
+              'Chain',
+              `${chain.pruned ? 'pruned' : 'archival'} ${network}`,
+              'The network this node follows, and whether it keeps every block',
+            ),
+            single(
+              'Blocks',
+              `${chain.blocks} / ${chain.headers}`,
+              'Blocks verified out of block headers received',
+            ),
+            single(
+              'Sync',
+              chain.initialblockdownload
+                ? `${(chain.verificationprogress * 100).toFixed(2)}%`
+                : 'Complete',
+              'How much of the blockchain this node has verified',
+            ),
           )
         }
 
         return {
           version: '1' as const,
           title: 'Node Runtime Info',
-          message: null,
-          result: {
-            type: 'single' as const,
-            value: lines.join('\n'),
-            copyable: false,
-            qr: false,
-            masked: false,
-          },
+          message: value.length
+            ? null
+            : 'The node did not answer RPC requests. It may still be starting.',
+          result: value.length ? { type: 'group' as const, value } : null,
         }
       },
     )
   },
 )
+
+function single(
+  name: string,
+  value: string,
+  description: string,
+): T.ActionResultMember {
+  return {
+    type: 'single',
+    name,
+    description,
+    value,
+    copyable: false,
+    masked: false,
+    qr: false,
+  }
+}

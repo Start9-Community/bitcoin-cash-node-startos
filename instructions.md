@@ -55,8 +55,8 @@ Settings are actions on the service page, organized into four:
 - **RPC & Peers Settings** — RPC timeout, threads, and work-queue depth; maximum
   connections (default 125); upload target; bloom-filter serving; allowed networks;
   and manual peers (`addnode`).
-- **Mempool & Block Policy** — mempool size, minimum relay fee, expiry, excessive
-  block size (default 32 MB), and ancestor/descendant limits.
+- **Mempool & Block Policy** — mempool size, minimum relay fee, expiry, and
+  excessive block size (default 32 MB).
 
 ## Tor networking
 

@@ -1,3 +1,4 @@
+import { T } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
 import { storeJson } from '../fileModels/store.json'
 import { bitcoinConfFile } from '../fileModels/bitcoin.conf'
@@ -33,7 +34,8 @@ export const viewCredentials = sdk.Action.withInput(
     return InputSpec.of({
       name: Value.select({
         name: 'Credential',
-        description: 'Select a credential to view its details.',
+        description:
+          'Default is the login this package itself uses. Every other name was created with Generate RPC Credentials, and its password cannot be shown again.',
         values,
         default: 'Default',
       }),
@@ -48,23 +50,17 @@ export const viewCredentials = sdk.Action.withInput(
     const port = networkPorts[network].rpc
 
     if (input.name === 'Default') {
-      const user = store?.rpcUser ?? 'bitcoincashd'
-      const pass = store?.rpcPassword ?? ''
       return {
         version: '1' as const,
         title: 'RPC Credential: Default',
-        message: [
-          '**Name:** Default (active)',
-          `**Username:** ${user}`,
-          `**Password:** ${pass}`,
-          `**Port:** ${port}`,
-        ].join('\n'),
+        message: null,
         result: {
-          type: 'single' as const,
-          value: `${user}:${pass}`,
-          copyable: true,
-          qr: false,
-          masked: true,
+          type: 'group' as const,
+          value: [
+            member('Username', store?.rpcUser ?? 'bitcoincashd', false),
+            member('Password', store?.rpcPassword ?? '', true),
+            member('Port', String(port), false),
+          ],
         },
       }
     }
@@ -74,19 +70,31 @@ export const viewCredentials = sdk.Action.withInput(
     return {
       version: '1' as const,
       title: `RPC Credential: ${input.name}`,
-      message: [
-        `**Name:** ${input.name}`,
-        `**Username:** ${input.name}`,
-        '**Password:** *(set at generation — not recoverable)*',
-        `**Port:** ${port}`,
-      ].join('\n'),
+      message:
+        'The password was shown once, when this credential was generated, and cannot be recovered.',
       result: {
-        type: 'single' as const,
-        value: `Username: ${input.name} | Port: ${port}`,
-        copyable: true,
-        qr: false,
-        masked: false,
+        type: 'group' as const,
+        value: [
+          member('Username', input.name, false),
+          member('Port', String(port), false),
+        ],
       },
     }
   },
 )
+
+function member(
+  name: string,
+  value: string,
+  masked: boolean,
+): T.ActionResultMember {
+  return {
+    type: 'single',
+    name,
+    description: null,
+    value,
+    copyable: true,
+    masked,
+    qr: false,
+  }
+}

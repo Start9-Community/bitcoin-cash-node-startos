@@ -32,7 +32,8 @@ export const deleteRpcUser = sdk.Action.withInput(
     return InputSpec.of({
       usernames: Value.multiselect({
         name: 'Existing RPC Users',
-        description: 'Select one or more RPC users to remove.',
+        description:
+          'Users created with Generate RPC Credentials. The Default login is not listed and cannot be removed.',
         warning: null,
         default: [],
         values: users,
@@ -67,7 +68,7 @@ export const deleteRpcUser = sdk.Action.withInput(
         ...conf?.raw,
         rpcauth: filtered.length > 0 ? filtered : undefined,
       },
-    } as any)
+    })
 
     const deleted = [...toDelete].join(', ')
     return {

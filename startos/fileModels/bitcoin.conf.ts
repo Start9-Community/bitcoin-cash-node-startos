@@ -32,49 +32,42 @@ const iniBoolean = z
   .optional()
   .catch(undefined)
 
-export const shape = z
-  .object({
-    server: z.literal(true).catch(true),
-    listen: z.literal(true).catch(true),
-    rpcbind: z.string().catch('0.0.0.0'),
-    rpcallowip: z.string().catch('0.0.0.0/0'),
-    rpcuser: iniString,
-    rpcpassword: iniString,
-    rpcauth: iniStringArray,
-    zmqpubrawblock: iniString,
-    zmqpubhashblock: iniString,
-    zmqpubrawtx: iniString,
-    zmqpubhashtx: iniString,
-    zmqpubhashds: iniString,
-    zmqpubrawds: iniString,
-    txindex: iniBoolean,
-    maxconnections: iniNumber,
-    rpcservertimeout: iniNumber,
-    rpcthreads: iniNumber,
-    rpcworkqueue: iniNumber,
-    prune: iniNumber,
-    maxmempool: iniNumber,
-    minrelaytxfee: iniNumber,
-    mempoolexpiry: iniNumber,
-    persistmempool: iniBoolean,
-    excessiveblocksize: iniNumber,
-    limitancestorcount: iniNumber,
-    limitdescendantcount: iniNumber,
-    doublespendproof: iniBoolean,
-    dbcache: iniNumber,
-    dbbatchsize: iniNumber,
-    peerbloomfilters: iniBoolean,
-    onlynet: iniStringArray,
-    externalip: iniStringArray,
-    addnode: iniStringArray,
-    maxuploadtarget: iniNumber,
-    blocknotify: iniString,
-    wallet: iniStringArray,
-  })
-  // Loose on purpose: bitcoin.conf carries keys this package does not model and
-  // a strict shape would strip them. The ini* coercions above are load-bearing
-  // too -- INI reads return strings, and a duplicated key returns an array.
-  .loose()
+export const shape = z.looseObject({
+  server: z.literal(true).catch(true),
+  listen: z.literal(true).catch(true),
+  rpcbind: z.string().catch('0.0.0.0'),
+  rpcallowip: z.string().catch('0.0.0.0/0'),
+  rpcuser: iniString,
+  rpcpassword: iniString,
+  rpcauth: iniStringArray,
+  zmqpubrawblock: iniString,
+  zmqpubhashblock: iniString,
+  zmqpubrawtx: iniString,
+  zmqpubhashtx: iniString,
+  zmqpubhashds: iniString,
+  zmqpubrawds: iniString,
+  txindex: iniBoolean,
+  maxconnections: iniNumber,
+  rpcservertimeout: iniNumber,
+  rpcthreads: iniNumber,
+  rpcworkqueue: iniNumber,
+  prune: iniNumber,
+  maxmempool: iniNumber,
+  minrelaytxfee: iniNumber,
+  mempoolexpiry: iniNumber,
+  persistmempool: iniBoolean,
+  excessiveblocksize: iniNumber,
+  doublespendproof: iniBoolean,
+  dbcache: iniNumber,
+  dbbatchsize: iniNumber,
+  peerbloomfilters: iniBoolean,
+  onlynet: iniStringArray,
+  externalip: iniStringArray,
+  addnode: iniStringArray,
+  maxuploadtarget: iniNumber,
+  blocknotify: iniString,
+  wallet: iniStringArray,
+})
 
 function stringifyPrimitives(a: unknown): unknown {
   if (a && typeof a === 'object') {
@@ -120,15 +113,16 @@ export const fullConfigSpec = InputSpec.of({
   prune: Value.number({
     name: 'Prune Target',
     description:
-      'Limit blockchain storage (MB). 0 = disabled. Min 550 MB when enabled. Incompatible with txindex.',
+      'Keep stored blocks under this size by deleting old ones. 0 keeps every block. BCHN accepts no target below 550 MiB, so 2 to 549 is saved as 550; 1 deletes blocks only when the pruneblockchain RPC asks.',
     required: false,
     default: 0,
     min: 0,
     max: null,
     integer: true,
-    units: 'MB',
+    units: 'MiB',
     placeholder: '0 (disabled)',
-    warning: 'Enabling pruning disables the transaction index.',
+    warning:
+      'Pruning turns off the Transaction Index. Turning pruning off again needs Reindex Blockchain, which downloads the whole chain again.',
   }),
   persistmempool: Value.toggle({
     name: 'Persist Mempool',
@@ -168,7 +162,8 @@ export const fullConfigSpec = InputSpec.of({
   // ── RPC ───────────────────────────────────────────────────────────────────
   rpcservertimeout: Value.number({
     name: 'RPC Server Timeout',
-    description: 'Seconds before an RPC call times out.',
+    description:
+      'Raise it if a service using RPC reports timeouts on long requests.',
     required: false,
     default: null,
     min: 5,
@@ -179,7 +174,8 @@ export const fullConfigSpec = InputSpec.of({
   }),
   rpcthreads: Value.number({
     name: 'RPC Threads',
-    description: 'Number of threads for RPC calls.',
+    description:
+      'How many RPC requests the node serves at the same time. Raise it if several services query the node heavily.',
     required: false,
     default: 4,
     min: 1,
@@ -190,7 +186,8 @@ export const fullConfigSpec = InputSpec.of({
   }),
   rpcworkqueue: Value.number({
     name: 'RPC Work Queue',
-    description: 'Depth of the RPC work queue.',
+    description:
+      'How many RPC requests can wait for a free thread. Raise it if a service reports that the work queue depth was exceeded.',
     required: false,
     default: 64,
     min: 8,
@@ -203,7 +200,8 @@ export const fullConfigSpec = InputSpec.of({
   // ── Peer Connections ───────────────────────────────────────────────────────
   maxconnections: Value.number({
     name: 'Maximum Connections',
-    description: 'Maximum number of peer connections.',
+    description:
+      'Each connection uses bandwidth and memory. Lower it on a constrained connection or device.',
     default: 125,
     required: false,
     min: 8,
@@ -231,7 +229,7 @@ export const fullConfigSpec = InputSpec.of({
   onlynet: Value.multiselect({
     name: 'Allowed Networks',
     description:
-      'Restrict peer connections to specific network types. Uncheck a network to exclude it. All checked = allow all (default).',
+      'Uncheck a network to stop connecting to peers over it.\n- IPv4: peers at IPv4 addresses\n- IPv6: peers at IPv6 addresses\n- Tor (.onion): onion peers, reached through the Tor service\nWith only Tor checked, every connection goes through Tor and DNS lookups are turned off.',
     default: ALL_ONLYNETS,
     values: ONLYNET_VALUES,
   }),
@@ -255,7 +253,8 @@ export const fullConfigSpec = InputSpec.of({
   // ── Mempool & Relay ───────────────────────────────────────────────────────
   maxmempool: Value.number({
     name: 'Max Mempool Size',
-    description: 'Maximum mempool memory usage in MB.',
+    description:
+      'Memory for unconfirmed transactions. When it is full, the lowest-fee transactions are dropped first.',
     required: false,
     default: null,
     min: 5,
@@ -266,7 +265,8 @@ export const fullConfigSpec = InputSpec.of({
   }),
   minrelaytxfee: Value.number({
     name: 'Minimum Relay Fee',
-    description: 'Minimum fee rate (BCH/kB) for relaying transactions.',
+    description:
+      'Transactions paying a lower fee rate are not relayed or kept in the mempool.',
     required: false,
     default: null,
     min: 0,
@@ -300,28 +300,6 @@ export const fullConfigSpec = InputSpec.of({
     integer: true,
     units: 'bytes',
     placeholder: '32000000',
-  }),
-  limitancestorcount: Value.number({
-    name: 'Ancestor Limit',
-    description: 'Max in-mempool ancestors per transaction.',
-    required: false,
-    default: null,
-    min: 1,
-    max: 1000,
-    integer: true,
-    units: 'transactions',
-    placeholder: '25',
-  }),
-  limitdescendantcount: Value.number({
-    name: 'Descendant Limit',
-    description: 'Max in-mempool descendants per transaction.',
-    required: false,
-    default: null,
-    min: 1,
-    max: 1000,
-    integer: true,
-    units: 'transactions',
-    placeholder: '25',
   }),
 
   // ── Advanced ──────────────────────────────────────────────────────────────
@@ -375,8 +353,6 @@ function fileToForm(
     minrelaytxfee,
     mempoolexpiry,
     excessiveblocksize,
-    limitancestorcount,
-    limitdescendantcount,
     dbcache,
     dbbatchsize,
     blocknotify,
@@ -413,8 +389,6 @@ function fileToForm(
     minrelaytxfee,
     mempoolexpiry,
     excessiveblocksize,
-    limitancestorcount,
-    limitdescendantcount,
     dbcache,
     dbbatchsize,
     blocknotify: blocknotify ?? undefined,
@@ -443,8 +417,6 @@ function formToFile(
     minrelaytxfee,
     mempoolexpiry,
     excessiveblocksize,
-    limitancestorcount,
-    limitdescendantcount,
     dbcache,
     dbbatchsize,
     blocknotify,
@@ -494,13 +466,13 @@ function formToFile(
     rpcservertimeout: rpcservertimeout ?? undefined,
     rpcthreads: rpcthreads ?? undefined,
     rpcworkqueue: rpcworkqueue ?? undefined,
-    prune: prune && prune > 0 ? prune : undefined,
+    // BCHN refuses to start with a prune target from 2 to 549.
+    prune:
+      !prune || prune < 0 ? undefined : prune === 1 ? 1 : Math.max(prune, 550),
     maxmempool: maxmempool ?? undefined,
     minrelaytxfee: minrelaytxfee ?? undefined,
     mempoolexpiry: mempoolexpiry ?? undefined,
     excessiveblocksize: excessiveblocksize ?? undefined,
-    limitancestorcount: limitancestorcount ?? undefined,
-    limitdescendantcount: limitdescendantcount ?? undefined,
     dbcache: dbcache ?? undefined,
     dbbatchsize: dbbatchsize ?? undefined,
     blocknotify: blocknotify ?? undefined,

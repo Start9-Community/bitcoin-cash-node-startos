@@ -18,16 +18,22 @@ Freshly scaffolded? Work the
 guide page, not a file in this repo — read it, don't copy it in.
 
 Keep `README.md` (technical reference for an AI support or administering agent) and
-`instructions.md` (end-user docs) in sync with your changes.
+`instructions.md` (end-user docs) in sync with your changes. This file restates neither:
+whoever changes the package has both, so it carries only what they don't — repo mechanics,
+a change that looks right and is not, where the next thing gets added, a naming trap, a
+build or test invocation particular to this repo.
 
-**Bugs and feature requests are GitHub issues on this repo** — file them as you find them.
+**Fix a defect you spot rather than reporting it** — you have the package open and the
+context to be sure. File **a GitHub issue on this repo** only when the call isn't yours to
+make: you can't pin the cause down, two defensible fixes exist, or it's too large to ride on
+the work in hand. An open issue is a report, not a queue — implement one when you're asked
+to or when it's labelled `Approved`, then close it with `Closes #<n>`.
+
 Don't record work in the repo instead: no `TODO.md`, no `NOTES.md`, no `PLAN.md`. What you
 verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **The package id is `bitcoincashd`, not `bchn` or `bitcoin-cash-node`.** Dependent packages (Fulcrum BCH, BCH Explorer, the mining pools) reference it by that id, and the interface id constants they import live in `startos/utils.ts`.
-- **testnet4's ports are remapped to 28342/28343 on purpose.** BCHN's defaults for it are 28332/28333, which are this package's ZMQ block and transaction ports. Don't "restore" the upstream defaults.
-- **`-listenonion=0` is forced.** BCHN would otherwise try a Tor control port on `127.0.0.1:9051`, which `tor-startos` does not offer — its control interface is a Unix socket. Inbound onion comes from attaching the Tor service's URL plugin to the Peer interface.
-- **Tor's SOCKS proxy is reached over the service bridge with a `9050` fallback.** The fallback holds the address constant while Tor is absent, so the `.const()` doesn't restart the node on Tor install/uninstall, and a dead address is just connection-refused — which is why `-onion` is safe to pass unconditionally.
-- **Onion-only mode adds `-proxy`, `-dnsseed=0` and `-dns=0`, and all three belong together.** Without them a clearnet DNS-seed or addrman fallback leaks the node's address while the user believes they are Tor-only.
+- **The package id is `bitcoincashd`, not `bchn` or `bitcoin-cash-node`.** Fulcrum BCH, BCH Explorer and the mining pools depend on it by that id and import `startos/actions/config/autoconfig.ts` and `startos/utils.ts` from `#next` — don't rename or remove an export.
+- **Don't "restore" BCHN's default testnet4 ports (28332/28333).** They are this package's ZMQ block and transaction ports, so testnet4 is remapped to 28342/28343.
+- **Keep the Tor flags as they are:** `-listenonion=0`, `-onion` passed unconditionally with the bridge's `9050` fallback, and onion-only mode's `-proxy`, `-dnsseed=0` and `-dns=0` together. README.md says what each one prevents.

@@ -15,18 +15,6 @@ export const manifest = setupManifest({
     'bitcoin-cash-node': {
       source: { dockerTag: 'mainnet/bitcoin-cash-node:v29.0.0' },
       arch: ['x86_64', 'aarch64'],
-      emulateMissingAs: 'x86_64',
-    },
-  },
-  dependencies: {
-    tor: {
-      description:
-        'Enables Tor onion routing for anonymous peer-to-peer connections. When Tor is installed and running, Bitcoin Cash Node automatically routes all connections through the Tor network for enhanced privacy.',
-      optional: true,
-      metadata: {
-        title: 'Tor',
-        icon: 'https://raw.githubusercontent.com/Start9Labs/tor-startos/65faea17febc739d910e8c26ff4e61f6333487a8/icon.svg',
-      },
     },
   },
 })

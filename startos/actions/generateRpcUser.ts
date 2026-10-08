@@ -56,7 +56,7 @@ export const generateRpcUser = sdk.Action.withInput(
     )
     await bitcoinConfFile.merge(effects, {
       raw: { ...conf?.raw, rpcauth: [...filtered, rpcauth] },
-    } as any)
+    })
 
     return {
       version: '1' as const,

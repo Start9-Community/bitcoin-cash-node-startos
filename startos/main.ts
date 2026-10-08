@@ -77,7 +77,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const externalip: (string | undefined)[] =
     ((bitcoinConf?.raw as Record<string, unknown> | undefined)?.externalip as
-      (string | undefined)[] | undefined) ?? []
+      | (string | undefined)[]
+      | undefined) ?? []
 
   // ── Tor mode selection ─────────────────────────────────────────────────────
   // tor-startos exposes SOCKS5 on TCP 9050 but its control interface is a

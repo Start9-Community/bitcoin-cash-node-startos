@@ -7,9 +7,9 @@ const networkSpec = InputSpec.of({
   network: Value.select({
     name: 'Network',
     description:
-      'Bitcoin Cash network to connect to. Changing this requires a node restart and a separate data directory per network.',
+      'Each network keeps its own blockchain data on disk.\n- Mainnet: the live Bitcoin Cash network\n- Testnet3: the legacy public test network\n- Testnet4: the lighter public test network\n- Scalenet: the public test network for high transaction throughput\n- Chipnet: the public test network where upcoming protocol upgrades (CHIPs) activate early\n- Regtest: a private chain on this server only, for local testing',
     warning:
-      'Switching networks requires a full restart. The node will sync from scratch on the new network. Your mainnet data is preserved separately on disk.',
+      'The node restarts on the new network and syncs it, from scratch if it has no data for that network yet. Data for every other network stays on disk.',
     values: {
       mainnet: 'Mainnet',
       testnet3: 'Testnet3 (legacy test network)',

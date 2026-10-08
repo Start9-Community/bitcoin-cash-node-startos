@@ -40,14 +40,12 @@ One upstream image, consumed unmodified.
 | Property      | Value                                                           |
 | ------------- | --------------------------------------------------------------- |
 | Image         | `mainnet/bitcoin-cash-node`                                     |
-| Architectures | x86_64, aarch64 — with aarch64 falling back to emulated x86_64  |
+| Architectures | x86_64, aarch64 (both native)                                   |
 | Command       | `bitcoind`, with the network-dependent settings passed as flags |
 
 | Subcontainer | Purpose                                                                       |
 | ------------ | ----------------------------------------------------------------------------- |
 | `node-sub`   | The `bitcoind` daemon — the one to `attach` to, and where `bitcoin-cli` lives |
-
-`emulateMissingAs: 'x86_64'` means an ARM board runs the x86_64 image under emulation when no native one is published. It works, and it is markedly slower than a native build — worth knowing before diagnosing a slow sync on ARM.
 
 **The daemon is given 5 minutes to shut down.** `sigtermTimeout` is set to 300 seconds because BCHN flushes its databases on exit, and killing it mid-flush is how a chainstate gets corrupted. A stop that appears to hang is usually this working correctly.
 
@@ -94,7 +92,7 @@ Tor, and **only when the configuration actually uses it**.
 
 | Configuration                                                       | Tor dependency              |
 | ------------------------------------------------------------------- | --------------------------- |
-| An `.onion` external address is set, or onion is an allowed network | Required, `kind: 'running'` |
+| An `.onion` external address is set, or onion is an allowed network | Tor `>=0.4.9.11:4`, running |
 | Neither                                                             | Not a dependency at all     |
 
 The dependency is derived from the config rather than from a toggle, which means it appears and disappears as the user changes their networking. Tor exports no interface of its own, so the package resolves its SOCKS proxy over the internal bridge with a fallback that holds the address stable while Tor is absent.
@@ -170,6 +168,7 @@ The transaction index, ZeroMQ, pruning, mempool persistence, and database perfor
 - **Cost:** applies on the next start. Turning the transaction index on makes the next start rebuild it, which takes hours.
 - **Repeat safety:** idempotent.
 - **The one hard conflict:** pruning and the transaction index are mutually exclusive. Enabling pruning turns the index off, and anything depending on it — Fulcrum, an explorer — stops being able to look up arbitrary transactions.
+- **Prune Target is 0 (off), 1 (prune only through the `pruneblockchain` RPC), or a target of at least 550 MiB.** BCHN refuses to start with 2–549, so the package writes any such value as 550. Turning pruning off again on a pruned node makes BCHN refuse to start until **Reindex Blockchain** runs, which downloads the whole chain again.
 - **Turning ZeroMQ off removes an interface**, so a subscriber loses its address rather than getting an empty stream.
 
 ### RPC & Peers Settings — Configuration
@@ -181,7 +180,7 @@ Connection limits, allowed networks, external addresses, and added nodes.
 
 ### Mempool & Block Policy — Configuration
 
-Mempool size and expiry, relay fee, excessive block size, and ancestor/descendant limits. Writes `bitcoin.conf`; applies on the next start.
+Mempool size and expiry, relay fee, and excessive block size. Writes `bitcoin.conf`; applies on the next start.
 
 ### Credentials — three actions
 
@@ -197,7 +196,7 @@ Mempool size and expiry, relay fee, excessive block size, and ancestor/descendan
 | ------------------------ | -------------- | --------------------------------------------------- |
 | Reindex Blockchain       | any            | Re-verifies every block from genesis, then restarts |
 | Reindex Chainstate       | any            | Rebuilds the UTXO set from existing blocks          |
-| Delete Peer List         | `only-stopped` | Removes cached peers and the ban list               |
+| Delete Peer List         | `only-stopped` | Removes the cached peer list (`peers.dat`)          |
 | Delete Transaction Index | `only-stopped` | Removes the index so it rebuilds                    |
 | Delete Test Network Data | any            | Deletes data for selected test networks             |
 
@@ -257,8 +256,7 @@ The `rpcauth` entries surviving is what stops a restore from breaking every depe
 4. **testnet4 does not use BCHN's default ports**, because they collide with the ZeroMQ ports; they are remapped.
 5. **Only the block ZeroMQ port carries a named interface.** The transaction and DSP ports are bound but do not appear on the service page.
 6. **Inbound onion is published by the Tor service**, not by BCHN — `-listenonion` is disabled because the Tor package offers no TCP control port.
-7. **On ARM the image may run emulated**, which is substantially slower than a native build.
-8. **RPC is bound to all interfaces inside the container** and allows any source. Reachability is StartOS's decision, not the daemon's.
+7. **RPC is bound to all interfaces inside the container** and allows any source. Reachability is StartOS's decision, not the daemon's.
 
 ---
 
@@ -269,7 +267,7 @@ package_id: bitcoincashd # note: the title is "Bitcoin Cash Node (BCHN)"
 image: mainnet/bitcoin-cash-node
 architectures:
   - x86_64
-  - aarch64 # emulateMissingAs: x86_64
+  - aarch64
 subcontainers:
   - node-sub
 volumes:

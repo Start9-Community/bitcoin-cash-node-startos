@@ -120,6 +120,7 @@ function single(
     value,
     copyable: false,
     masked: false,
+    launchable: false,
     qr: false,
   }
 }

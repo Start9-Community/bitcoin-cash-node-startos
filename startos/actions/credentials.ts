@@ -95,6 +95,7 @@ function member(
     value,
     copyable: true,
     masked,
+    launchable: false,
     qr: false,
   }
 }

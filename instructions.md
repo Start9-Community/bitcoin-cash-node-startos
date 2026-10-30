@@ -66,6 +66,8 @@ Settings → Allowed Networks** to **Tor (.onion)** only — BCHN then disables 
 seeds and routes everything through Tor. In that mode, add at least one `.onion`
 peer under **Add Peers**, since DNS seeds are off.
 
+If you publish the **Peer** interface through StartTunnel to keep your home IP private, send BCHN's outbound traffic through that tunnel too. Connections BCHN opens itself to clearnet peers otherwise leave through your home router, so those peers see your home IP. While BCHN is Tor-only, this doesn't apply. If you use the tunnel for another reason, such as a port your router can't forward, there is nothing to change.
+
 For inbound onion connectivity (being reachable from Tor): open **Interfaces →
 Peer Interface → Add Onion Service** in StartOS. This creates a hidden service
 forwarding your `.onion:8333` to the node so peers can reach you.

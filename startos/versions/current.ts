@@ -1,18 +1,18 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '29.0.0:14',
+  version: '29.0.0:15',
   releaseNotes: {
     en_US:
-      'Restarting Bitcoin Cash Node while it is still starting stops every process of the previous run.',
+      'The instructions cover keeping your home IP private when you publish BCHN through StartTunnel.',
     es_ES:
-      'Reiniciar Bitcoin Cash Node mientras aún se está iniciando detiene todos los procesos de la ejecución anterior.',
+      'Las instrucciones explican cómo mantener privada tu IP doméstica cuando publicas BCHN a través de StartTunnel.',
     de_DE:
-      'Ein Neustart von Bitcoin Cash Node, während es noch startet, beendet alle Prozesse des vorherigen Laufs.',
+      'Die Anleitung erklärt, wie Ihre Heim-IP-Adresse privat bleibt, wenn Sie BCHN über StartTunnel veröffentlichen.',
     pl_PL:
-      'Ponowne uruchomienie Bitcoin Cash Node w trakcie uruchamiania zatrzymuje wszystkie procesy poprzedniego uruchomienia.',
+      'Instrukcje wyjaśniają, jak zachować prywatność domowego adresu IP, gdy publikujesz BCHN przez StartTunnel.',
     fr_FR:
-      "Redémarrer Bitcoin Cash Node pendant son démarrage arrête tous les processus de l'exécution précédente.",
+      'Les instructions expliquent comment garder votre IP personnelle privée lorsque vous publiez BCHN via StartTunnel.',
   },
   migrations: {
     up: async () => {},

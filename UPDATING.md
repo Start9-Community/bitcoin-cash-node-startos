@@ -14,6 +14,4 @@ means the BCHN project itself, which the image tracks tag-for-tag.
 
 ## Applying the bump
 
-1. Bump `dockerTag` in `startos/manifest/index.ts` to `mainnet/bitcoin-cash-node:v<new version>`.
-2. Update `version` (and reset the downstream revision to `0`) in `startos/versions/current.ts` to the new upstream version — e.g. `30.0.0:0`. Spin off a historical version file only if the bump needs a migration (see [Versions](https://docs.start9.com/packaging/versions.html)).
-3. Update the version references in `README.md` and `instructions.md` (the `v29.0.0` mentions and the May 2026 upgrade notes if they no longer apply).
+Bump `dockerTag` in `startos/manifest/index.ts` to `mainnet/bitcoin-cash-node:v<new version>`.

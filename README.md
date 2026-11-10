@@ -120,6 +120,8 @@ Three named interfaces, plus three ports bound without one.
 
 Only 28332 carries a named interface. The other three ports are bound so subscribers can reach them, but they show no entry on the service page — an agent looking for a "ZMQ transactions" address will not find one and should use the ZeroMQ interface's address with the port substituted.
 
+**The ZeroMQ ports listen on IPv4 only:** BCHN v29.0.0 never sets `ZMQ_IPV6` (`src/zmq/zmqpublishnotifier.cpp:84-91`), so a `tcp://[::]` bind fails. StartOS still lists the interface's IPv6 addresses, and connections to them are refused — subscribers use an IPv4 address.
+
 **The DSP streams are always on.** Double Spend Proof is a Bitcoin Cash feature with no equivalent elsewhere, and merchants' point-of-sale software depends on it, so it is not made optional.
 
 **RPC and P2P ports move with the chain:**

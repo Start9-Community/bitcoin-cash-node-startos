@@ -5,7 +5,6 @@ export const rootDir = '/data'
 // ── Interface IDs ─────────────────────────────────────────────────────────────
 export const rpcInterfaceId = 'rpc'
 export const peerInterfaceId = 'peer'
-export const zmqInterfaceId = 'zmq'
 
 // ── Network types ─────────────────────────────────────────────────────────────
 // BCHN supports six networks: mainnet, testnet3, testnet4, scalenet, chipnet, regtest.

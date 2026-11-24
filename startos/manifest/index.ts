@@ -10,7 +10,7 @@ export const manifest = setupManifest({
   marketingUrl: 'https://bitcoincashnode.org/',
   donationUrl: 'bitcoincash:prnc2exht3zxlrqqcat690tc85cvfuypngh7szx6mk',
   description: { short, long },
-  volumes: ['main'],
+  volumes: ['main', 'public'],
   images: {
     'bitcoin-cash-node': {
       source: { dockerTag: 'mainnet/bitcoin-cash-node:v29.0.0' },

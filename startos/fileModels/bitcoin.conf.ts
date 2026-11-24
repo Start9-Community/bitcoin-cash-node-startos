@@ -384,7 +384,7 @@ function fileToForm(
     rpcservertimeout,
     rpcthreads,
     rpcworkqueue,
-    prune,
+    prune: prune ?? 0,
     maxmempool,
     minrelaytxfee,
     mempoolexpiry,

@@ -51,11 +51,12 @@ One upstream image, consumed unmodified.
 
 ## Volume and Data Layout
 
-One volume, holding the chain and everything else.
+Two volumes: `main` holds the chain and everything else, and `public` holds only what dependent services read.
 
-| Volume | Mount Point | Purpose                                                    |
-| ------ | ----------- | ---------------------------------------------------------- |
-| `main` | `/data`     | Blockchain, chainstate, indexes, config, and package state |
+| Volume   | Mount Point | Purpose                                                    |
+| -------- | ----------- | ---------------------------------------------------------- |
+| `main`   | `/data`     | Blockchain, chainstate, indexes, config, and package state |
+| `public` | —           | `rpc/rpc.json`, for dependents to mount read-only          |
 
 | Path                       | Written by  | Holds                                        |
 | -------------------------- | ----------- | -------------------------------------------- |
@@ -69,12 +70,13 @@ The volume is marked NoCOW (`chattr +C`) on first start. That matters on btrfs, 
 
 ## File Models
 
-Two models. `bitcoin.conf` is upstream's own configuration file; `store.json` is what only StartOS knows.
+Three models. `bitcoin.conf` is upstream's own configuration file; `store.json` is what only StartOS knows; `rpc.json` is what dependents read.
 
 | File           | Format | Modelled                | Written by                     |
 | -------------- | ------ | ----------------------- | ------------------------------ |
 | `bitcoin.conf` | INI    | Yes — `FileHelper.ini`  | Install and the config actions |
 | `store.json`   | JSON   | Yes — `FileHelper.json` | Install, actions, and `main`   |
+| `rpc.json`     | JSON   | Yes — `FileHelper.json` | Init, from `store.json`        |
 
 **`bitcoin.conf` is modelled loosely on purpose.** The schema names the keys the package manages, but unknown keys are preserved rather than stripped — so a setting added by hand for something the actions do not cover survives a config action rewriting its neighbours. The keys the package _does_ name are its own, and an action that touches one overwrites it.
 
@@ -83,6 +85,8 @@ INI parsing returns strings, and a duplicated key returns an array. The model co
 **RPC access is `rpcauth`, not a shared password.** Each credential is stored as `username:salt$hmac`, so the password itself is never in the config file and is shown exactly once, when generated. The consequence is that there is no way to recover a lost password — only to generate a replacement for that username, which the action does by removing the old entry first.
 
 **`store.json`** carries the selected network, the initial RPC user and password, the ZeroMQ and index toggles, and the one-shot reindex flags. `main` clears a reindex flag as it consumes it, so a reindex happens once rather than on every start.
+
+**`rpc/rpc.json`** on the `public` volume is a copy of four `store.json` fields — `network`, `fullySynced`, `rpcUser`, `rpcPassword` — kept current by an init handler that watches `store.json`. Dependents (Fulcrum BCH, BCH Explorer, the mining pools) mount `public`'s `rpc/` read-only to learn the chain and the login, so they never see `main`.
 
 Five settings in `bitcoin.conf` are asserted by the package and not left to the user: `server`, `listen`, `rpcbind`, `rpcallowip`, and the ZeroMQ publisher addresses. StartOS decides reachability at the network layer, so binding the RPC narrowly inside the container would only prevent the OS from reaching it.
 
@@ -103,13 +107,12 @@ That fallback is what makes it safe to pass `-onion` unconditionally: an unreach
 
 ## Network Access and Interfaces
 
-Three named interfaces, plus three ports bound without one.
+Two named interfaces, plus four ZeroMQ ports bound without one.
 
-| Interface        | Id     | Type | Mainnet Port | Description                             |
-| ---------------- | ------ | ---- | ------------ | --------------------------------------- |
-| RPC Interface    | `rpc`  | api  | 8332         | JSON-RPC over HTTP                      |
-| Peer Interface   | `peer` | p2p  | 8333         | The Bitcoin Cash P2P network            |
-| ZeroMQ Interface | `zmq`  | api  | 28332        | Block notifications — only when enabled |
+| Interface      | Id     | Type | Mainnet Port | Description                  |
+| -------------- | ------ | ---- | ------------ | ---------------------------- |
+| RPC Interface  | `rpc`  | api  | 8332         | JSON-RPC over HTTP           |
+| Peer Interface | `peer` | p2p  | 8333         | The Bitcoin Cash P2P network |
 
 | Port  | Stream                          | Bound                  |
 | ----- | ------------------------------- | ---------------------- |
@@ -118,9 +121,9 @@ Three named interfaces, plus three ports bound without one.
 | 28334 | Double Spend Proof hashes       | **Always**             |
 | 28335 | Double Spend Proof raw          | **Always**             |
 
-Only 28332 carries a named interface. The other three ports are bound so subscribers can reach them, but they show no entry on the service page — an agent looking for a "ZMQ transactions" address will not find one and should use the ZeroMQ interface's address with the port substituted.
+**The ZeroMQ ports are bridge-only.** ZeroMQ has no authentication, and the streams include the node's own transactions as it broadcasts them, so each port is bound on its own host (`zmq`, `zmq-tx`, `zmq-dsp-hash`, `zmq-dsp-raw`) with no exported interface. That keeps them on loopback and the LXC bridge — never the LAN, never the internet — and none of them appears on the service page. A dependent on the same server resolves each with `sdk.host.getBridgeAddress({ packageId: 'bitcoincashd', hostId, internalPort })`; an app running off the server cannot subscribe.
 
-**The ZeroMQ ports listen on IPv4 only:** BCHN v29.0.0 never sets `ZMQ_IPV6` (`src/zmq/zmqpublishnotifier.cpp:84-91`), so a `tcp://[::]` bind fails. StartOS still lists the interface's IPv6 addresses, and connections to them are refused — subscribers use an IPv4 address.
+**The ZeroMQ ports listen on IPv4 only:** BCHN v29.0.0 never sets `ZMQ_IPV6` (`src/zmq/zmqpublishnotifier.cpp:84-91`), so a `tcp://[::]` bind fails; subscribers use the IPv4 bridge address.
 
 **The DSP streams are always on.** Double Spend Proof is a Bitcoin Cash feature with no equivalent elsewhere, and merchants' point-of-sale software depends on it, so it is not made optional.
 
@@ -171,7 +174,7 @@ The transaction index, ZeroMQ, pruning, mempool persistence, and database perfor
 - **Repeat safety:** idempotent.
 - **The one hard conflict:** pruning and the transaction index are mutually exclusive. Enabling pruning turns the index off, and anything depending on it — Fulcrum, an explorer — stops being able to look up arbitrary transactions.
 - **Prune Target is 0 (off), 1 (prune only through the `pruneblockchain` RPC), or a target of at least 550 MiB.** BCHN refuses to start with 2–549, so the package writes any such value as 550. Turning pruning off again on a pruned node makes BCHN refuse to start until **Reindex Blockchain** runs, which downloads the whole chain again.
-- **Turning ZeroMQ off removes an interface**, so a subscriber loses its address rather than getting an empty stream.
+- **Turning ZeroMQ off disables forwarding on ports 28332 and 28333.** Their allocated bridge addresses remain, but connections to them fail.
 
 ### RPC & Peers Settings — Configuration
 
@@ -246,6 +249,8 @@ The `main` volume is copied, with everything regenerable excluded:
 
 So the backup is the **configuration**, not the chain: `bitcoin.conf` with its `rpcauth` entries, and `store.json` with the chain selection and the initial credential.
 
+The `public` volume is not backed up: it is rewritten from `store.json` on every init, restore included.
+
 **A restored node re-syncs from scratch.** That is the deliberate trade — a backup measured in kilobytes rather than hundreds of gigabytes, at the cost of a full initial sync afterwards. Anything depending on this node's RPC is unusable until that completes, and if the transaction index is on it must rebuild as well.
 
 The `rpcauth` entries surviving is what stops a restore from breaking every dependent service and external wallet.
@@ -256,7 +261,7 @@ The `rpcauth` entries surviving is what stops a restore from breaking every depe
 2. **A generated RPC password cannot be recovered** — only the hash is stored. Generate a replacement instead.
 3. **Pruning and the transaction index are mutually exclusive**, and enabling pruning breaks anything that indexes this node.
 4. **testnet4 does not use BCHN's default ports**, because they collide with the ZeroMQ ports; they are remapped.
-5. **Only the block ZeroMQ port carries a named interface.** The transaction and DSP ports are bound but do not appear on the service page.
+5. **No ZeroMQ port is reachable from off the server.** All four are bridge-only, for dependents on the same StartOS server.
 6. **Inbound onion is published by the Tor service**, not by BCHN — `-listenonion` is disabled because the Tor package offers no TCP control port.
 7. **RPC is bound to all interfaces inside the container** and allows any source. Reachability is StartOS's decision, not the daemon's.
 
@@ -274,16 +279,18 @@ subcontainers:
   - node-sub
 volumes:
   main: /data
+  public: rpc/rpc.json for dependents; not backed up
 file_models:
   - bitcoin.conf
   - store.json
+  - rpc.json
 startos_managed_env_vars: [] # settings are passed as bitcoind flags
 dependencies:
   - tor # required only when an .onion externalip or onion-only is configured
 interfaces:
   rpc: { type: api, port: 8332 }
   peer: { type: p2p, port: 8333 }
-  zmq: { type: api, port: 28332 } # blocks; exported only when ZeroMQ is enabled
+  # zmq, zmq-tx, zmq-dsp-hash, zmq-dsp-raw: no interface; 28332-28335 bridge-only (28332/28333 only when ZeroMQ is enabled)
 actions:
   - runtime-info
   - network-config

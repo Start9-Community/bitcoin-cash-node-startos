@@ -51,11 +51,12 @@ One upstream image, consumed unmodified.
 
 ## Volume and Data Layout
 
-One volume, holding the chain and everything else.
+Two volumes: `main` holds the chain and everything else, and `public` holds only what dependent services read.
 
-| Volume | Mount Point | Purpose                                                    |
-| ------ | ----------- | ---------------------------------------------------------- |
-| `main` | `/data`     | Blockchain, chainstate, indexes, config, and package state |
+| Volume   | Mount Point | Purpose                                                    |
+| -------- | ----------- | ---------------------------------------------------------- |
+| `main`   | `/data`     | Blockchain, chainstate, indexes, config, and package state |
+| `public` | —           | `rpc/rpc.json`, for dependents to mount read-only          |
 
 | Path                       | Written by  | Holds                                        |
 | -------------------------- | ----------- | -------------------------------------------- |
@@ -69,12 +70,13 @@ The volume is marked NoCOW (`chattr +C`) on first start. That matters on btrfs, 
 
 ## File Models
 
-Two models. `bitcoin.conf` is upstream's own configuration file; `store.json` is what only StartOS knows.
+Three models. `bitcoin.conf` is upstream's own configuration file; `store.json` is what only StartOS knows; `rpc.json` is what dependents read.
 
 | File           | Format | Modelled                | Written by                     |
 | -------------- | ------ | ----------------------- | ------------------------------ |
 | `bitcoin.conf` | INI    | Yes — `FileHelper.ini`  | Install and the config actions |
 | `store.json`   | JSON   | Yes — `FileHelper.json` | Install, actions, and `main`   |
+| `rpc.json`     | JSON   | Yes — `FileHelper.json` | Init, from `store.json`        |
 
 **`bitcoin.conf` is modelled loosely on purpose.** The schema names the keys the package manages, but unknown keys are preserved rather than stripped — so a setting added by hand for something the actions do not cover survives a config action rewriting its neighbours. The keys the package _does_ name are its own, and an action that touches one overwrites it.
 
@@ -83,6 +85,8 @@ INI parsing returns strings, and a duplicated key returns an array. The model co
 **RPC access is `rpcauth`, not a shared password.** Each credential is stored as `username:salt$hmac`, so the password itself is never in the config file and is shown exactly once, when generated. The consequence is that there is no way to recover a lost password — only to generate a replacement for that username, which the action does by removing the old entry first.
 
 **`store.json`** carries the selected network, the initial RPC user and password, the ZeroMQ and index toggles, and the one-shot reindex flags. `main` clears a reindex flag as it consumes it, so a reindex happens once rather than on every start.
+
+**`rpc/rpc.json`** on the `public` volume is a copy of four `store.json` fields — `network`, `fullySynced`, `rpcUser`, `rpcPassword` — kept current by an init handler that watches `store.json`. Dependents (Fulcrum BCH, BCH Explorer, the mining pools) mount `public`'s `rpc/` read-only to learn the chain and the login, so they never see `main`.
 
 Five settings in `bitcoin.conf` are asserted by the package and not left to the user: `server`, `listen`, `rpcbind`, `rpcallowip`, and the ZeroMQ publisher addresses. StartOS decides reachability at the network layer, so binding the RPC narrowly inside the container would only prevent the OS from reaching it.
 
@@ -246,6 +250,8 @@ The `main` volume is copied, with everything regenerable excluded:
 
 So the backup is the **configuration**, not the chain: `bitcoin.conf` with its `rpcauth` entries, and `store.json` with the chain selection and the initial credential.
 
+The `public` volume is not backed up: it is rewritten from `store.json` on every init, restore included.
+
 **A restored node re-syncs from scratch.** That is the deliberate trade — a backup measured in kilobytes rather than hundreds of gigabytes, at the cost of a full initial sync afterwards. Anything depending on this node's RPC is unusable until that completes, and if the transaction index is on it must rebuild as well.
 
 The `rpcauth` entries surviving is what stops a restore from breaking every dependent service and external wallet.
@@ -274,9 +280,11 @@ subcontainers:
   - node-sub
 volumes:
   main: /data
+  public: rpc/rpc.json for dependents; not backed up
 file_models:
   - bitcoin.conf
   - store.json
+  - rpc.json
 startos_managed_env_vars: [] # settings are passed as bitcoind flags
 dependencies:
   - tor # required only when an .onion externalip or onion-only is configured

@@ -174,7 +174,7 @@ The transaction index, ZeroMQ, pruning, mempool persistence, and database perfor
 - **Repeat safety:** idempotent.
 - **The one hard conflict:** pruning and the transaction index are mutually exclusive. Enabling pruning turns the index off, and anything depending on it — Fulcrum, an explorer — stops being able to look up arbitrary transactions.
 - **Prune Target is 0 (off), 1 (prune only through the `pruneblockchain` RPC), or a target of at least 550 MiB.** BCHN refuses to start with 2–549, so the package writes any such value as 550. Turning pruning off again on a pruned node makes BCHN refuse to start until **Reindex Blockchain** runs, which downloads the whole chain again.
-- **Turning ZeroMQ off unbinds ports 28332 and 28333**, so a subscriber loses its bridge address rather than getting an empty stream.
+- **Turning ZeroMQ off disables forwarding on ports 28332 and 28333.** Their allocated bridge addresses remain, but connections to them fail.
 
 ### RPC & Peers Settings — Configuration
 

@@ -107,13 +107,12 @@ That fallback is what makes it safe to pass `-onion` unconditionally: an unreach
 
 ## Network Access and Interfaces
 
-Three named interfaces, plus three ports bound without one.
+Two named interfaces, plus four ZeroMQ ports bound without one.
 
-| Interface        | Id     | Type | Mainnet Port | Description                             |
-| ---------------- | ------ | ---- | ------------ | --------------------------------------- |
-| RPC Interface    | `rpc`  | api  | 8332         | JSON-RPC over HTTP                      |
-| Peer Interface   | `peer` | p2p  | 8333         | The Bitcoin Cash P2P network            |
-| ZeroMQ Interface | `zmq`  | api  | 28332        | Block notifications — only when enabled |
+| Interface      | Id     | Type | Mainnet Port | Description                  |
+| -------------- | ------ | ---- | ------------ | ---------------------------- |
+| RPC Interface  | `rpc`  | api  | 8332         | JSON-RPC over HTTP           |
+| Peer Interface | `peer` | p2p  | 8333         | The Bitcoin Cash P2P network |
 
 | Port  | Stream                          | Bound                  |
 | ----- | ------------------------------- | ---------------------- |
@@ -122,9 +121,9 @@ Three named interfaces, plus three ports bound without one.
 | 28334 | Double Spend Proof hashes       | **Always**             |
 | 28335 | Double Spend Proof raw          | **Always**             |
 
-Only 28332 carries a named interface. The other three ports are bound so subscribers can reach them, but they show no entry on the service page — an agent looking for a "ZMQ transactions" address will not find one and should use the ZeroMQ interface's address with the port substituted.
+**The ZeroMQ ports are bridge-only.** ZeroMQ has no authentication, and the streams include the node's own transactions as it broadcasts them, so each port is bound on its own host (`zmq`, `zmq-tx`, `zmq-dsp-hash`, `zmq-dsp-raw`) with no exported interface. That keeps them on loopback and the LXC bridge — never the LAN, never the internet — and none of them appears on the service page. A dependent on the same server resolves each with `sdk.host.getBridgeAddress({ packageId: 'bitcoincashd', hostId, internalPort })`; an app running off the server cannot subscribe.
 
-**The ZeroMQ ports listen on IPv4 only:** BCHN v29.0.0 never sets `ZMQ_IPV6` (`src/zmq/zmqpublishnotifier.cpp:84-91`), so a `tcp://[::]` bind fails. StartOS still lists the interface's IPv6 addresses, and connections to them are refused — subscribers use an IPv4 address.
+**The ZeroMQ ports listen on IPv4 only:** BCHN v29.0.0 never sets `ZMQ_IPV6` (`src/zmq/zmqpublishnotifier.cpp:84-91`), so a `tcp://[::]` bind fails; subscribers use the IPv4 bridge address.
 
 **The DSP streams are always on.** Double Spend Proof is a Bitcoin Cash feature with no equivalent elsewhere, and merchants' point-of-sale software depends on it, so it is not made optional.
 
@@ -175,7 +174,7 @@ The transaction index, ZeroMQ, pruning, mempool persistence, and database perfor
 - **Repeat safety:** idempotent.
 - **The one hard conflict:** pruning and the transaction index are mutually exclusive. Enabling pruning turns the index off, and anything depending on it — Fulcrum, an explorer — stops being able to look up arbitrary transactions.
 - **Prune Target is 0 (off), 1 (prune only through the `pruneblockchain` RPC), or a target of at least 550 MiB.** BCHN refuses to start with 2–549, so the package writes any such value as 550. Turning pruning off again on a pruned node makes BCHN refuse to start until **Reindex Blockchain** runs, which downloads the whole chain again.
-- **Turning ZeroMQ off removes an interface**, so a subscriber loses its address rather than getting an empty stream.
+- **Turning ZeroMQ off unbinds ports 28332 and 28333**, so a subscriber loses its bridge address rather than getting an empty stream.
 
 ### RPC & Peers Settings — Configuration
 
@@ -262,7 +261,7 @@ The `rpcauth` entries surviving is what stops a restore from breaking every depe
 2. **A generated RPC password cannot be recovered** — only the hash is stored. Generate a replacement instead.
 3. **Pruning and the transaction index are mutually exclusive**, and enabling pruning breaks anything that indexes this node.
 4. **testnet4 does not use BCHN's default ports**, because they collide with the ZeroMQ ports; they are remapped.
-5. **Only the block ZeroMQ port carries a named interface.** The transaction and DSP ports are bound but do not appear on the service page.
+5. **No ZeroMQ port is reachable from off the server.** All four are bridge-only, for dependents on the same StartOS server.
 6. **Inbound onion is published by the Tor service**, not by BCHN — `-listenonion` is disabled because the Tor package offers no TCP control port.
 7. **RPC is bound to all interfaces inside the container** and allows any source. Reachability is StartOS's decision, not the daemon's.
 
@@ -291,7 +290,7 @@ dependencies:
 interfaces:
   rpc: { type: api, port: 8332 }
   peer: { type: p2p, port: 8333 }
-  zmq: { type: api, port: 28332 } # blocks; exported only when ZeroMQ is enabled
+  # zmq, zmq-tx, zmq-dsp-hash, zmq-dsp-raw: no interface; 28332-28335 bridge-only (28332/28333 only when ZeroMQ is enabled)
 actions:
   - runtime-info
   - network-config

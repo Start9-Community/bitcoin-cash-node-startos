@@ -36,4 +36,5 @@ verified, tried, and decided belongs in the commit message and the PR body.
 
 - **The package id is `bitcoincashd`, not `bchn` or `bitcoin-cash-node`.** Fulcrum BCH, BCH Explorer and the mining pools depend on it by that id and import `startos/actions/config/autoconfig.ts` and `startos/utils.ts` from `#next` — don't rename or remove an export.
 - **Don't "restore" BCHN's default testnet4 ports (28332/28333).** They are this package's ZMQ block and transaction ports, so testnet4 is remapped to 28342/28343.
+- **Never export an interface on a ZeroMQ host** (`zmq`, `zmq-tx`, `zmq-dsp-hash`, `zmq-dsp-raw`). Exporting one puts the unauthenticated stream on the LAN by default; dependents resolve them with `getBridgeAddress`, which needs no interface.
 - **Keep the Tor flags as they are:** `-listenonion=0`, `-onion` passed unconditionally with the bridge's `9050` fallback, and onion-only mode's `-proxy`, `-dnsseed=0` and `-dns=0` together. README.md says what each one prevents.

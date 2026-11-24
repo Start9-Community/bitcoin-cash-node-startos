@@ -2,7 +2,6 @@ import { sdk } from './sdk'
 import {
   rpcInterfaceId,
   peerInterfaceId,
-  zmqInterfaceId,
   networkPorts,
   zmqPort,
   zmqPortTx,
@@ -67,6 +66,8 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   receipts.push(await peerOrigin.export([peer]))
 
   // ── ZMQ block/tx (conditional) ───────────────────────────────────────────
+  // Bridge-only, like the DSP ports below: ZeroMQ is unauthenticated and
+  // carries the node's own transactions, so no interface puts it on the LAN.
   if (bitcoinConf?.zmqEnabled) {
     const zmqMulti = sdk.MultiHost.of(effects, 'zmq')
     const zmqOrigin = await zmqMulti.bindPort(zmqPort, {
@@ -75,19 +76,7 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
       secure: { ssl: false },
       protocol: null,
     })
-    const zmq = sdk.createInterface(effects, {
-      name: 'ZeroMQ Interface',
-      id: zmqInterfaceId,
-      description:
-        'Streams real-time block and transaction notifications (hashes and raw data)',
-      type: 'api',
-      masked: false,
-      schemeOverride: null,
-      username: null,
-      path: '',
-      query: {},
-    })
-    receipts.push(await zmqOrigin.export([zmq]))
+    receipts.push(await zmqOrigin.export([]))
 
     const zmqTxMulti = sdk.MultiHost.of(effects, 'zmq-tx')
     const zmqTxOrigin = await zmqTxMulti.bindPort(zmqPortTx, {

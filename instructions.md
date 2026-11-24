@@ -13,9 +13,10 @@ page covers what is specific to running it on StartOS.
 - A full BCH node — downloads, verifies, and relays the entire blockchain, then stays in sync.
 - A **JSON-RPC interface** on port 8332 that other StartOS services (Fulcrum BCH, BCH
   Explorer, mining pools) and external wallets connect to.
-- **ZeroMQ** block and transaction notifications on ports 28332/28333 for services
-  that subscribe to them, on by default and switchable under **Node Settings**.
-  Double Spend Proof (DSP) ZMQ streams on ports 28334/28335 are always active.
+- **ZeroMQ** block and transaction notifications on ports 28332/28333 for other
+  services on your server that subscribe to them, on by default and switchable under
+  **Node Settings**. Double Spend Proof (DSP) ZMQ streams on ports 28334/28335 are
+  always active. Apps on other devices cannot subscribe.
 - **Tor** support — when Tor is installed, BCHN routes outbound peer connections through
   Tor. A hybrid mode (clearnet + onion) runs by default; restrict to onion-only under
   **RPC & Peers Settings** if you want a fully private node.
@@ -106,6 +107,8 @@ Beyond the four configuration actions above, the service exposes:
 | 28333 | TCP      | ZMQ transaction notifications (when enabled) |
 | 28334 | TCP      | ZMQ DSP hash notifications (always on)       |
 | 28335 | TCP      | ZMQ DSP raw tx notifications (always on)     |
+
+The ZMQ ports (28332–28335) are reachable only by other services on this server.
 
 ## Network upgrades
 
